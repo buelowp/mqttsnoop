@@ -40,8 +40,10 @@ bool MQTTSnoopWindow::populateNewLayout(QVBoxLayout *layout, QString topic, QByt
         return false;
     }
     
+    qDebug() << __PRETTY_FUNCTION__ << "Populating new topic" << topic;
     JsonWidget *widget = new JsonWidget(topic);
     widget->addJson(json);
+    widget->resize(widget->sizeHint());
     layout->addWidget(widget);
     return true;
 }
@@ -49,6 +51,16 @@ bool MQTTSnoopWindow::populateNewLayout(QVBoxLayout *layout, QString topic, QByt
 bool MQTTSnoopWindow::populateExistingLayout(QVBoxLayout *layout, QString topic, QByteArray payload)
 {
     QJsonDocument doc = QJsonDocument::fromJson(payload);
+    
+    for (int i = 0; i < layout->count(); i++) {
+        JsonWidget *widget = static_cast<JsonWidget*>(layout->itemAt(i)->widget());
+        if (widget->topic() == topic) {
+            qDebug() << __PRETTY_FUNCTION__ << "Updating existing topic" << topic;
+            widget->addJson(doc);
+            return true;
+        }
+    }
+    populateNewLayout(layout, topic, payload);
     return false;
 }
 
