@@ -5,7 +5,9 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent)
     m_mainWidget = new QTabWidget();
     
     m_mqttClient = new QMQTT::Client("172.24.1.13", 1883, false, false);
-    m_mqttClient->setClientId(QHostInfo::localHostName());
+    QString hn = QString("%1-%2").arg(QHostInfo::localHostName()).arg(QRandomGenerator::global()->generate());
+    m_mqttClient->setClientId(hn);
+    qDebug() << __PRETTY_FUNCTION__ << "Connecting to host with name" << hn;
     m_mqttClient->connectToHost();
     m_mqttClient->setAutoReconnect(true);
     m_mqttClient->setAutoReconnectInterval(10000);
@@ -29,7 +31,10 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent)
     statusBar()->addWidget(m_sbMessagesPerMinute);
 }
 
-MQTTSnoopWindow::~MQTTSnoopWindow() = default;
+MQTTSnoopWindow::~MQTTSnoopWindow()
+{
+    m_mqttClient->unsubscribe("#");
+}
 
 bool MQTTSnoopWindow::populateNewLayout(QVBoxLayout *layout, QString topic, QByteArray payload)
 {
@@ -55,7 +60,6 @@ bool MQTTSnoopWindow::populateExistingLayout(QVBoxLayout *layout, QString topic,
     for (int i = 0; i < layout->count(); i++) {
         JsonWidget *widget = static_cast<JsonWidget*>(layout->itemAt(i)->widget());
         if (widget->topic() == topic) {
-            qDebug() << __PRETTY_FUNCTION__ << "Updating existing topic" << topic;
             widget->addJson(doc);
             return true;
         }
@@ -107,8 +111,7 @@ void MQTTSnoopWindow::received(const QMQTT::Message& message)
         }
     }
     
-    qDebug() << __PRETTY_FUNCTION__ << ": Message on topic" << message.topic();
-    QWidget *widget = new QWidget();
+    QScrollArea *widget = new QScrollArea();
     QVBoxLayout *layout = new QVBoxLayout();
     if (populateNewLayout(layout, message.topic(), message.payload())) {
         widget->setLayout(layout);
