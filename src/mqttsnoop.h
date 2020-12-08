@@ -5,8 +5,11 @@
 #include <QtWidgets/QtWidgets>
 #include <QtGui/QtGui>
 #include <QtNetwork/QtNetwork>
-#include <qmqtt.h>
+#include <QtQmqtt/qmqtt.h>
+
 #include "jsonwidget.h"
+#include "tabwidget.h"
+#include "eventcounter.h"
 
 class MQTTSnoopWindow : public QMainWindow
 {
@@ -25,16 +28,32 @@ public slots:
     void published(const quint16 msgid, const quint8 qos);
     void pingresp();
     void received(const QMQTT::Message& message);
+    void displayMPM(uint64_t);
+    
+protected:
+    void showEvent(QShowEvent *e);
+    void resizeEvent(QResizeEvent *e);
+    void closeEvent(QCloseEvent *e);
     
 private:
-    bool populateNewLayout(QVBoxLayout *layout, QString topic, QByteArray payload);
-    bool populateExistingLayout(QVBoxLayout *layout, QString topic, QByteArray payload);
+    void updateTab(QString topic, QJsonDocument doc, TabWidget *tab);
+    void newTab(QString topic, QJsonDocument doc);
+    void buildStatusBar();
+    void updateMpmCount();
     
     QMQTT::Client *m_mqttClient;
     QTabWidget *m_mainWidget;
-    QLabel *m_sbConnected;
+    QWidget *m_statusbarWidget;
+    QHBoxLayout *m_statusbarLayout;
+    QLabel *m_sbConnected;     
     QLabel *m_sbTopicsReceived;
     QLabel *m_sbMessagesPerMinute;
+    QMutex m_newTabMutex;
+    QMutex m_updateTabMutex;
+    QMap<int, int> m_messageCounter;
+    EventCounter *m_eventCounter;
+    int m_topics;
+    uint32_t m_mpm;
 };
 
 #endif // MQTTSNOOP_H

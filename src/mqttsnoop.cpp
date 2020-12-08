@@ -1,6 +1,6 @@
 #include "mqttsnoop.h"
 
-MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent)
+MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topics(0), m_mpm(0)
 {
     m_mainWidget = new QTabWidget();
     
@@ -11,6 +11,9 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent)
     m_mqttClient->connectToHost();
     m_mqttClient->setAutoReconnect(true);
     m_mqttClient->setAutoReconnectInterval(10000);
+    
+    m_eventCounter = new EventCounter();
+    connect(m_eventCounter, SIGNAL(minuteEvents(uint64_t)), this, SLOT(displayMPM(uint64_t)));
     
     connect(m_mqttClient, SIGNAL(connected()), this, SLOT(connected()));
     connect(m_mqttClient, SIGNAL(disconnected()), this, SLOT(disconnected()));
@@ -23,49 +26,104 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent)
     
     setCentralWidget(m_mainWidget);
     
-    m_sbConnected = new QLabel("Disconnected");
-    m_sbTopicsReceived = new QLabel("Topics: 0");
-    m_sbMessagesPerMinute = new QLabel("Messages Per Minute: 0");
-    statusBar()->addWidget(m_sbConnected);
-    statusBar()->addWidget(m_sbTopicsReceived);
-    statusBar()->addWidget(m_sbMessagesPerMinute);
+    buildStatusBar();
+    
+    QPalette pal = palette();
+    pal.setColor(QPalette::Window, Qt::darkGray);
+    setAutoFillBackground(true);
+    setPalette(pal);
 }
 
 MQTTSnoopWindow::~MQTTSnoopWindow()
 {
     m_mqttClient->unsubscribe("#");
+    m_mqttClient->disconnect();
 }
 
-bool MQTTSnoopWindow::populateNewLayout(QVBoxLayout *layout, QString topic, QByteArray payload)
+void MQTTSnoopWindow::displayMPM(uint64_t e)
 {
-    QJsonDocument json = QJsonDocument::fromJson(payload);
-    
-    if (json.isNull() || json.isEmpty()) {
-        qDebug() << __PRETTY_FUNCTION__ << ": Returning false";
-        return false;
-    }
-    
-    qDebug() << __PRETTY_FUNCTION__ << "Populating new topic" << topic;
-    JsonWidget *widget = new JsonWidget(topic);
-    widget->addJson(json);
-    widget->resize(widget->sizeHint());
-    layout->addWidget(widget);
-    return true;
+    m_sbMessagesPerMinute->setText(QString("Messages Per Minute: %1").arg(e));
 }
 
-bool MQTTSnoopWindow::populateExistingLayout(QVBoxLayout *layout, QString topic, QByteArray payload)
+void MQTTSnoopWindow::buildStatusBar()
 {
-    QJsonDocument doc = QJsonDocument::fromJson(payload);
+    QPalette p;
+    p.setColor(QPalette::Window, Qt::white);
     
-    for (int i = 0; i < layout->count(); i++) {
-        JsonWidget *widget = static_cast<JsonWidget*>(layout->itemAt(i)->widget());
-        if (widget->topic() == topic) {
-            widget->addJson(doc);
-            return true;
-        }
-    }
-    populateNewLayout(layout, topic, payload);
-    return false;
+    m_statusbarWidget = new QWidget();
+    m_statusbarLayout = new QHBoxLayout();
+    
+    m_sbConnected = new QLabel("Disconnected");
+    m_sbConnected->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    m_sbConnected->setAutoFillBackground(true);
+//     m_sbConnected->setPalette(p);
+    
+    m_sbTopicsReceived = new QLabel("Topics: 0");
+    m_sbTopicsReceived->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    m_sbTopicsReceived->setAlignment(Qt::AlignCenter);
+    m_sbTopicsReceived->setAutoFillBackground(true);
+//     m_sbTopicsReceived->setPalette(p);
+    
+    m_sbMessagesPerMinute = new QLabel("Messages Per Minute: 0");
+    m_sbMessagesPerMinute->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    m_sbMessagesPerMinute->setAlignment(Qt::AlignRight);
+    m_sbMessagesPerMinute->setAutoFillBackground(true);
+//    m_sbMessagesPerMinute->setPalette(p);
+    
+    m_statusbarLayout->addWidget(m_sbConnected);
+    m_statusbarLayout->addWidget(m_sbTopicsReceived);
+    m_statusbarLayout->addWidget(m_sbMessagesPerMinute);
+    m_statusbarLayout->addStretch();
+    m_statusbarLayout->setSizeConstraint(QLayout::SetMaximumSize);
+    
+    m_statusbarWidget->setLayout(m_statusbarLayout);
+
+    statusBar()->addWidget(m_statusbarWidget);
+}
+
+void MQTTSnoopWindow::closeEvent(QCloseEvent* e)
+{
+}
+
+void MQTTSnoopWindow::showEvent(QShowEvent* e)
+{
+    Q_UNUSED(e)
+    
+    m_sbConnected->setMinimumWidth((statusBar()->width() / 3) - 15);
+    m_sbTopicsReceived->setMinimumWidth((statusBar()->width() / 3) - 15);
+    m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 3) - 15);
+}
+
+void MQTTSnoopWindow::resizeEvent(QResizeEvent* e)
+{
+    Q_UNUSED(e)
+    
+    m_sbConnected->setMinimumWidth((statusBar()->width() / 3) - 15);
+    m_sbTopicsReceived->setMinimumWidth((statusBar()->width() / 3) - 15);
+    m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 3) - 15);    
+}
+
+void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
+{
+    QMutexLocker locker(&m_newTabMutex);
+    QString parentTopic = topic.left(topic.indexOf("/"));
+    
+    TabWidget *tab = new TabWidget();
+
+    tab->addJson(topic, json);
+    m_mainWidget->addTab(tab, parentTopic);
+    m_topics++;
+//     qDebug() << __PRETTY_FUNCTION__ << "Created a new tab";
+}
+
+void MQTTSnoopWindow::updateTab(QString topic, QJsonDocument doc, TabWidget* tab)
+{
+    QMutexLocker locker(&m_updateTabMutex);
+    QString parentTopic = topic.left(topic.indexOf("/"));
+    if (tab->addJson(topic, doc))
+        m_topics++;
+    
+//     qDebug() << __PRETTY_FUNCTION__ << "Updated a tab";
 }
 
 void MQTTSnoopWindow::connected()
@@ -99,25 +157,28 @@ void MQTTSnoopWindow::published(const quint16 msgid, const quint8 qos)
 void MQTTSnoopWindow::received(const QMQTT::Message& message)
 {
     QString parentTopic = message.topic().left(message.topic().indexOf("/"));
+    QJsonDocument json = QJsonDocument::fromJson(message.payload());
     int i = 0;
+    
+    m_eventCounter->bump();
+    
+    if (json.isNull() || json.isEmpty()) {
+        return;
+    }
     
     for (i = 0; i < m_mainWidget->count(); i++) {
         if (m_mainWidget->tabText(i) == parentTopic) {
-            QWidget *widget = m_mainWidget->widget(i);
-            QVBoxLayout *layout = static_cast<QVBoxLayout*>(widget->layout());
-            populateExistingLayout(layout, message.topic(), message.payload());
-            m_sbTopicsReceived->setText(QString("Topics: %1").arg(m_mainWidget->count()));
+//             qDebug() << __PRETTY_FUNCTION__ << "Found parent [" << parentTopic << "] for topic [" << message.topic() << "] and updating tab contents";
+            TabWidget *widget = static_cast<TabWidget*>(m_mainWidget->widget(i));
+            updateTab(message.topic(), json, widget);
+            m_sbTopicsReceived->setText(QString("Topics: %1").arg(m_topics));
             return;
         }
     }
+
+    newTab(message.topic(), json);
     
-    QScrollArea *widget = new QScrollArea();
-    QVBoxLayout *layout = new QVBoxLayout();
-    if (populateNewLayout(layout, message.topic(), message.payload())) {
-        widget->setLayout(layout);
-        m_mainWidget->addTab(widget, parentTopic);
-    }
-    m_sbTopicsReceived->setText(QString("Topics: %1").arg(m_mainWidget->count()));
+    m_sbTopicsReceived->setText(QString("Topics: %1").arg(m_topics));
 }
 
 void MQTTSnoopWindow::subscribed(const QString& topic, const quint8 qos)

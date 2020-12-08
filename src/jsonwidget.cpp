@@ -21,14 +21,17 @@
 JsonWidget::JsonWidget(QString topic, QWidget *parent) : QWidget(parent), m_topicString(topic), m_y(0), m_width(0), m_populated(false)
 {
     m_topic = new QLabel(topic, this);
+    m_topic->setStyleSheet("QLabel { color: blue; font: 16pt 'Roboto'; }");
     m_topic->move(5, m_y + 10);
     m_origin = m_topic->height();
+    m_topic->show();
     m_y = m_topic->height() + 10;
-//    setStyleSheet("background-color:white;");
+    
     QPalette pal = palette();
-    pal.setColor(QPalette::Background, Qt::white);
+    pal.setColor(QPalette::Window, Qt::white);
     setAutoFillBackground(true);
     setPalette(pal);
+//     qDebug() << __PRETTY_FUNCTION__ << "Topic label height" << m_topic->height();
 }
 
 JsonWidget::~JsonWidget() = default;
@@ -47,65 +50,70 @@ void JsonWidget::paintEvent(QPaintEvent* e)
 {
     QPainter painter(this);
 
-    painter.drawRoundedRect(0, 5, width() - 7, height() - 7, 3, 3);
+    painter.drawRoundedRect(0, 0, width(), height(), 0, 0);
     QWidget::paintEvent(e);
 }
 
 void JsonWidget::showEvent(QShowEvent *e)
 {
     QWidget::showEvent(e);
+    m_topic->adjustSize();
+//     qDebug() << __PRETTY_FUNCTION__ << "Topic label height" << m_topic->height();
 }
 
 void JsonWidget::populateNewWidget(int localX, QJsonObject obj)
 {
+    QFont f("Roboto", 14);
     localX += 10;
     
     foreach(const QString& key, obj.keys()) {
         QJsonValue value = obj.value(key);
-            QLabel *label;
-            switch (value.type()) {
-                case QJsonValue::Bool:
-                    label = new QLabel(QString("%1 : %2").arg(key).arg(value.toBool()), this);
-                    label->move(localX, m_y);
-                    label->setObjectName(key);
-                    m_y += label->height();
-                    break;
-                case QJsonValue::Double:
-                    label = new QLabel(QString("%1 : %2").arg(key).arg(value.toDouble()), this);
-                    label->move(localX, m_y);
-                    label->setObjectName(key);
-                    m_y += label->height();
-                    break;
-                case QJsonValue::String:
-                    label = new QLabel(QString("%1 : %2").arg(key).arg(value.toString()), this);
-                    label->move(localX, m_y);
-                    label->setObjectName(key);
-                    m_y += label->height();
-                    break;
-                case QJsonValue::Array:
-                    label = new QLabel(QString("%1 : %2").arg(key).arg("NOT DONE YET"), this);
-                    label->move(localX, m_y);
-                    m_y += label->height();
-                    label->setObjectName(key);
-                    break;
-                case QJsonValue::Object:
-                    label = new QLabel(QString("%1").arg(key), this);
-                    label->move(localX, m_y);
-                    m_y += label->height();
-                    label->setObjectName("object");
-                    populateNewWidget(localX, value.toObject());
-                    break;
-                case QJsonValue::Undefined:
-                case QJsonValue::Null:
-                    label = new QLabel(QString("%1 : %2").arg(key).arg("UNDEFINED"), this);
-                    label->move(localX, m_y);
-                    m_y += label->height();
-                    label->setObjectName(key);
-                    break;
-            }
-            uint32_t newWidth = label->width() + localX;
-            if (newWidth > m_width)
-                m_width = newWidth;
+        QLabel *label;
+        switch (value.type()) {
+            case QJsonValue::Bool:
+                label = new QLabel(QString("%1 : %2").arg(key).arg(value.toBool()), this);
+                label->move(localX, m_y);
+                label->setObjectName(key);
+                m_y += label->height();
+                break;
+            case QJsonValue::Double:
+                label = new QLabel(QString("%1 : %2").arg(key).arg(value.toDouble()), this);
+                label->move(localX, m_y);
+                label->setObjectName(key);
+                m_y += label->height();
+                break;
+            case QJsonValue::String:
+                label = new QLabel(QString("%1 : %2").arg(key).arg(value.toString()), this);
+                label->move(localX, m_y);
+                label->setObjectName(key);
+                m_y += label->height();
+                break;
+            case QJsonValue::Array:
+                label = new QLabel(QString("%1 : %2").arg(key).arg("NOT DONE YET"), this);
+                label->move(localX, m_y);
+                m_y += label->height();
+                label->setObjectName(key);
+                break;
+            case QJsonValue::Object:
+                label = new QLabel(QString("%1").arg(key), this);
+                label->move(localX, m_y);
+                m_y += label->height();
+                label->setObjectName("object");
+                populateNewWidget(localX, value.toObject());
+                break;
+            case QJsonValue::Undefined:
+            case QJsonValue::Null:
+                label = new QLabel(QString("%1 : %2").arg(key).arg("UNDEFINED"), this);
+                label->move(localX, m_y);
+                m_y += label->height();
+                label->setObjectName(key);
+                break;
+        }
+
+        label->setFont(f);
+        uint32_t newWidth = label->width() + localX;
+        if (newWidth > m_width)
+            m_width = newWidth;
     }
 }
 
@@ -170,6 +178,7 @@ void JsonWidget::addJson(QJsonDocument& doc)
         return;
     }
     
+//     qDebug() << __PRETTY_FUNCTION__ << "Topic label height" << m_topic->height();
     QJsonObject json = doc.object();
     if (m_populated) {
         updateWidget(5, 0, json);
