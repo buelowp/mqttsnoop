@@ -29,7 +29,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     buildStatusBar();
     
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, Qt::darkGray);
+    pal.setColor(QPalette::Window, Qt::lightGray);
     setAutoFillBackground(true);
     setPalette(pal);
 }
@@ -107,13 +107,18 @@ void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
 {
     QMutexLocker locker(&m_newTabMutex);
     QString parentTopic = topic.left(topic.indexOf("/"));
-    
+    QWidget *parentWidget = new QWidget(m_mainWidget);
+    QHBoxLayout *parentLayout = new QHBoxLayout();
+    parentWidget->setLayout(parentLayout);
+    QScrollArea *parentScroll = new QScrollArea();
+    parentLayout->addWidget(parentScroll);
     TabWidget *tab = new TabWidget();
-
+    parentScroll->setWidgetResizable(true);
+    parentScroll->setWidget(tab);
+    
     tab->addJson(topic, json);
-    m_mainWidget->addTab(tab, parentTopic);
+    m_mainWidget->addTab(parentWidget, parentTopic);
     m_topics++;
-//     qDebug() << __PRETTY_FUNCTION__ << "Created a new tab";
 }
 
 void MQTTSnoopWindow::updateTab(QString topic, QJsonDocument doc, TabWidget* tab)
@@ -168,8 +173,10 @@ void MQTTSnoopWindow::received(const QMQTT::Message& message)
     
     for (i = 0; i < m_mainWidget->count(); i++) {
         if (m_mainWidget->tabText(i) == parentTopic) {
-//             qDebug() << __PRETTY_FUNCTION__ << "Found parent [" << parentTopic << "] for topic [" << message.topic() << "] and updating tab contents";
-            TabWidget *widget = static_cast<TabWidget*>(m_mainWidget->widget(i));
+            QWidget *top = static_cast<QWidget*>(m_mainWidget->widget(i));
+            QHBoxLayout *topLayout = static_cast<QHBoxLayout*>(top->layout());
+            QScrollArea *scroller = static_cast<QScrollArea*>(topLayout->itemAt(0)->widget());
+            TabWidget *widget = static_cast<TabWidget*>(scroller->widget());
             updateTab(message.topic(), json, widget);
             m_sbTopicsReceived->setText(QString("Topics: %1").arg(m_topics));
             return;
