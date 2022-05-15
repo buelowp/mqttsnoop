@@ -21,9 +21,10 @@ TabWidget::TabWidget(QWidget *parent) : QWidget(parent)
     m_layout = new QGridLayout();
     setLayout(m_layout);
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, Qt::darkGray);
+    pal.setColor(QPalette::Window, Qt::white);
     setAutoFillBackground(true);
     setPalette(pal);
+    m_layout->setSpacing(10);
 }
 
 TabWidget::~TabWidget() = default;

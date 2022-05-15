@@ -50,7 +50,7 @@ void JsonWidget::paintEvent(QPaintEvent* e)
 {
     QPainter painter(this);
 
-    painter.drawRoundedRect(0, 0, width(), height(), 0, 0);
+    painter.drawRoundedRect(0, 0, width() - 1, height() - 1, 0, 0);
     QWidget::paintEvent(e);
 }
 
@@ -58,7 +58,7 @@ void JsonWidget::showEvent(QShowEvent *e)
 {
     QWidget::showEvent(e);
     m_topic->adjustSize();
-//     qDebug() << __PRETTY_FUNCTION__ << "Topic label height" << m_topic->height();
+     qDebug() << __PRETTY_FUNCTION__ << ": width()" << width() << ", height()" << height();
 }
 
 void JsonWidget::populateNewWidget(int localX, QJsonObject obj)

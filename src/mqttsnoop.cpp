@@ -4,7 +4,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
 {
     m_mainWidget = new QTabWidget();
     
-    m_mqttClient = new QMQTT::Client("172.24.1.13", 1883, false, false);
+    m_mqttClient = new QMQTT::Client("172.24.1.12", 1883, false, false);
     QString hn = QString("%1-%2").arg(QHostInfo::localHostName()).arg(QRandomGenerator::global()->generate());
     m_mqttClient->setClientId(hn);
     qDebug() << __PRETTY_FUNCTION__ << "Connecting to host with name" << hn;
