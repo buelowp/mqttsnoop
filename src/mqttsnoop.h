@@ -31,9 +31,9 @@ public slots:
     void displayMPM(uint64_t);
     
 protected:
-    void showEvent(QShowEvent *e);
-    void resizeEvent(QResizeEvent *e);
-    void closeEvent(QCloseEvent *e);
+    void showEvent(QShowEvent *e) override;
+    void resizeEvent(QResizeEvent *e) override;
+    void closeEvent(QCloseEvent *e) override;
     
 private:
     void updateTab(QString topic, QJsonDocument doc, TabWidget *tab);
@@ -42,7 +42,7 @@ private:
     void updateMpmCount();
     
     QMQTT::Client *m_mqttClient;
-    QTabWidget *m_mainWidget;
+    QTabWidget *m_tabWidget;
     QWidget *m_statusbarWidget;
     QHBoxLayout *m_statusbarLayout;
     QLabel *m_sbConnected;     

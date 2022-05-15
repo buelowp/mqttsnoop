@@ -2,7 +2,7 @@
 
 MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topics(0), m_mpm(0)
 {
-    m_mainWidget = new QTabWidget();
+    m_tabWidget = new QTabWidget();
     
     m_mqttClient = new QMQTT::Client("172.24.1.12", 1883, false, false);
     QString hn = QString("%1-%2").arg(QHostInfo::localHostName()).arg(QRandomGenerator::global()->generate());
@@ -24,7 +24,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     connect(m_mqttClient, SIGNAL(pingresp()), this, SLOT(pingresp()));
     connect(m_mqttClient, SIGNAL(received(const QMQTT::Message&)), this, SLOT(received(const QMQTT::Message&)));
     
-    setCentralWidget(m_mainWidget);
+    setCentralWidget(m_tabWidget);
     
     buildStatusBar();
     
@@ -107,7 +107,7 @@ void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
 {
     QMutexLocker locker(&m_newTabMutex);
     QString parentTopic = topic.left(topic.indexOf("/"));
-    QWidget *parentWidget = new QWidget(m_mainWidget);
+    QWidget *parentWidget = new QWidget(m_tabWidget);
     QHBoxLayout *parentLayout = new QHBoxLayout();
     parentWidget->setLayout(parentLayout);
     QScrollArea *parentScroll = new QScrollArea();
@@ -117,7 +117,7 @@ void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
     parentScroll->setWidget(tab);
     
     tab->addJson(topic, json);
-    m_mainWidget->addTab(parentWidget, parentTopic);
+    m_tabWidget->addTab(parentWidget, parentTopic);
     m_topics++;
 }
 
@@ -127,15 +127,13 @@ void MQTTSnoopWindow::updateTab(QString topic, QJsonDocument doc, TabWidget* tab
     QString parentTopic = topic.left(topic.indexOf("/"));
     if (tab->addJson(topic, doc))
         m_topics++;
-    
-//     qDebug() << __PRETTY_FUNCTION__ << "Updated a tab";
 }
 
 void MQTTSnoopWindow::connected()
 {
-    qDebug() << __PRETTY_FUNCTION__ << ": Connection success";
     m_mqttClient->subscribe("#");   // Subscribe to EVERYTHING on purpose
     m_sbConnected->setText(QString("Connected: %1").arg(m_mqttClient->hostName()));
+    qDebug() << __PRETTY_FUNCTION__ << ": MQTT connected to" << m_mqttClient->hostName();
 }
 
 void MQTTSnoopWindow::disconnected()
@@ -171,9 +169,9 @@ void MQTTSnoopWindow::received(const QMQTT::Message& message)
         return;
     }
     
-    for (i = 0; i < m_mainWidget->count(); i++) {
-        if (m_mainWidget->tabText(i) == parentTopic) {
-            QWidget *top = static_cast<QWidget*>(m_mainWidget->widget(i));
+    for (i = 0; i < m_tabWidget->count(); i++) {
+        if (m_tabWidget->tabText(i) == parentTopic) {
+            QWidget *top = static_cast<QWidget*>(m_tabWidget->widget(i));
             QHBoxLayout *topLayout = static_cast<QHBoxLayout*>(top->layout());
             QScrollArea *scroller = static_cast<QScrollArea*>(topLayout->itemAt(0)->widget());
             TabWidget *widget = static_cast<TabWidget*>(scroller->widget());
@@ -192,12 +190,10 @@ void MQTTSnoopWindow::subscribed(const QString& topic, const quint8 qos)
 {
     Q_UNUSED(topic)
     Q_UNUSED(qos)
-    qDebug() << __PRETTY_FUNCTION__ << ": subscribed to:" << topic;
 }
 
 void MQTTSnoopWindow::unsubscribed(const QString& topic)
 {
-    qDebug() << __PRETTY_FUNCTION__ << ": Unsubscribed from topic:" << topic;
 }
 
 
