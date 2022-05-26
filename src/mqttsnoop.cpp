@@ -29,7 +29,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     buildStatusBar();
     
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, Qt::lightGray);
+    pal.setColor(QPalette::Window, QColor(0xF9, 0xF9, 0xF9));
     setAutoFillBackground(true);
     setPalette(pal);
 }
@@ -109,6 +109,7 @@ void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
     QString parentTopic = topic.left(topic.indexOf("/"));
     QWidget *parentWidget = new QWidget(m_tabWidget);
     QHBoxLayout *parentLayout = new QHBoxLayout();
+    parentLayout->setSpacing(5);
     parentWidget->setLayout(parentLayout);
     QScrollArea *parentScroll = new QScrollArea();
     parentLayout->addWidget(parentScroll);
