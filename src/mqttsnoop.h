@@ -29,6 +29,8 @@ public slots:
     void pingresp();
     void received(const QMQTT::Message& message);
     void displayMPM(uint64_t);
+    void menuSubscribe();
+    void menuConnect();
     
 protected:
     void showEvent(QShowEvent *e) override;
@@ -39,6 +41,7 @@ private:
     void updateTab(QString topic, QJsonDocument doc, TabWidget *tab);
     void newTab(QString topic, QJsonDocument doc);
     void buildStatusBar();
+    void buildMenuBar();
     void updateMpmCount();
     
     QMQTT::Client *m_mqttClient;
@@ -48,9 +51,11 @@ private:
     QLabel *m_sbConnected;     
     QLabel *m_sbTopicsReceived;
     QLabel *m_sbMessagesPerMinute;
+    QLabel *m_sbCurrentTopic;
     QMutex m_newTabMutex;
     QMutex m_updateTabMutex;
     QMap<int, int> m_messageCounter;
+    QString m_currentTopic;
     EventCounter *m_eventCounter;
     int m_topics;
     uint32_t m_mpm;

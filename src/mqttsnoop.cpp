@@ -27,17 +27,56 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     setCentralWidget(m_tabWidget);
     
     buildStatusBar();
+    buildMenuBar();
     
     QPalette pal = palette();
     pal.setColor(QPalette::Window, QColor(0xF9, 0xF9, 0xF9));
     setAutoFillBackground(true);
     setPalette(pal);
+
+    m_currentTopic = "#";
 }
 
 MQTTSnoopWindow::~MQTTSnoopWindow()
 {
-    m_mqttClient->unsubscribe("#");
+    m_mqttClient->unsubscribe(m_currentTopic);
     m_mqttClient->disconnect();
+}
+
+void MQTTSnoopWindow::buildMenuBar()
+{
+    QToolBar *netToolBar = addToolBar(tr("Network"));
+    const QIcon connectIcon = QIcon::fromTheme("document-new", QIcon(":/images/new.png"));
+    QAction *connectAct = new QAction(connectIcon, tr("&Connect"), this);
+    connectAct->setStatusTip(tr("Connect"));
+    connect(connectAct, &QAction::triggered, this, &MQTTSnoopWindow::menuConnect);
+    netToolBar->addAction(connectAct);
+
+    const QIcon subscribeIcon = QIcon::fromTheme("document-open", QIcon(":/images/open.png"));
+    QAction *subsribeAct = new QAction(subscribeIcon, tr("&Subscribe"), this);
+    subsribeAct->setStatusTip(tr("Subscribe"));
+    connect(subsribeAct, &QAction::triggered, this, &MQTTSnoopWindow::menuSubscribe);
+    netToolBar->addAction(subsribeAct);
+}
+
+
+void MQTTSnoopWindow::menuConnect()
+{
+}
+
+void MQTTSnoopWindow::menuSubscribe()
+{
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("Subscribe to Topics"),
+                                         tr("Topic String"), QLineEdit::Normal,
+                                         m_currentTopic, &ok);
+
+    if (ok && text.size()) {
+        m_mqttClient->unsubscribe(m_currentTopic);
+        m_mqttClient->subscribe(text);
+        m_currentTopic = text;
+        m_sbCurrentTopic->setText(QString("Topic: ") + m_currentTopic);
+    }
 }
 
 void MQTTSnoopWindow::displayMPM(uint64_t e)
@@ -47,33 +86,31 @@ void MQTTSnoopWindow::displayMPM(uint64_t e)
 
 void MQTTSnoopWindow::buildStatusBar()
 {
-    QPalette p;
-    p.setColor(QPalette::Window, Qt::white);
-    
     m_statusbarWidget = new QWidget();
     m_statusbarLayout = new QHBoxLayout();
     
     m_sbConnected = new QLabel("Disconnected");
-    m_sbConnected->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     m_sbConnected->setAutoFillBackground(true);
-//     m_sbConnected->setPalette(p);
-    
+
     m_sbTopicsReceived = new QLabel("Topics: 0");
-    m_sbTopicsReceived->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     m_sbTopicsReceived->setAlignment(Qt::AlignCenter);
     m_sbTopicsReceived->setAutoFillBackground(true);
-//     m_sbTopicsReceived->setPalette(p);
-    
+
     m_sbMessagesPerMinute = new QLabel("Messages Per Minute: 0");
-    m_sbMessagesPerMinute->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     m_sbMessagesPerMinute->setAlignment(Qt::AlignRight);
     m_sbMessagesPerMinute->setAutoFillBackground(true);
-//    m_sbMessagesPerMinute->setPalette(p);
     
+    m_sbCurrentTopic = new QLabel(QString("Topic: ") + m_currentTopic);
+    m_sbCurrentTopic->setAlignment(Qt::AlignCenter);
+    m_sbCurrentTopic->setAutoFillBackground(true);
+
     m_statusbarLayout->addWidget(m_sbConnected);
-    m_statusbarLayout->addWidget(m_sbTopicsReceived);
-    m_statusbarLayout->addWidget(m_sbMessagesPerMinute);
     m_statusbarLayout->addStretch();
+    m_statusbarLayout->addWidget(m_sbTopicsReceived);
+    m_statusbarLayout->addStretch();
+    m_statusbarLayout->addWidget(m_sbCurrentTopic);
+    m_statusbarLayout->addStretch();
+    m_statusbarLayout->addWidget(m_sbMessagesPerMinute);
     m_statusbarLayout->setSizeConstraint(QLayout::SetMaximumSize);
     
     m_statusbarWidget->setLayout(m_statusbarLayout);
@@ -89,9 +126,10 @@ void MQTTSnoopWindow::showEvent(QShowEvent* e)
 {
     Q_UNUSED(e)
     
-    m_sbConnected->setMinimumWidth((statusBar()->width() / 3) - 15);
-    m_sbTopicsReceived->setMinimumWidth((statusBar()->width() / 3) - 15);
-    m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 3) - 15);
+    m_sbConnected->setMinimumWidth((statusBar()->width() / 4) - 15);
+    m_sbTopicsReceived->setMinimumWidth((statusBar()->width() / 4) - 15);
+    m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 4) - 15);
+    m_sbCurrentTopic->setMinimumWidth((statusBar()->width() / 4) - 15);
 }
 
 void MQTTSnoopWindow::resizeEvent(QResizeEvent* e)
@@ -132,7 +170,7 @@ void MQTTSnoopWindow::updateTab(QString topic, QJsonDocument doc, TabWidget* tab
 
 void MQTTSnoopWindow::connected()
 {
-    m_mqttClient->subscribe("#");   // Subscribe to EVERYTHING on purpose
+//    m_mqttClient->subscribe("#");   // Subscribe to EVERYTHING on purpose
     m_sbConnected->setText(QString("Connected: %1").arg(m_mqttClient->hostName()));
     qDebug() << __PRETTY_FUNCTION__ << ": MQTT connected to" << m_mqttClient->hostName();
 }
