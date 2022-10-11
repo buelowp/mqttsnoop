@@ -10,6 +10,7 @@
 #include "jsonwidget.h"
 #include "tabwidget.h"
 #include "eventcounter.h"
+#include "addressdialog.h"
 
 class MQTTSnoopWindow : public QMainWindow
 {
@@ -31,7 +32,9 @@ public slots:
     void displayMPM(uint64_t);
     void menuSubscribe();
     void menuConnect();
-    
+    void connectAddressInput();
+    void connectAddressInput(QString address);
+
 protected:
     void showEvent(QShowEvent *e) override;
     void resizeEvent(QResizeEvent *e) override;
@@ -45,6 +48,7 @@ private:
     void updateMpmCount();
     
     QMQTT::Client *m_mqttClient;
+    AddressDialog *m_addressDialog;
     QTabWidget *m_tabWidget;
     QWidget *m_statusbarWidget;
     QHBoxLayout *m_statusbarLayout;
@@ -56,6 +60,8 @@ private:
     QMutex m_updateTabMutex;
     QMap<int, int> m_messageCounter;
     QString m_currentTopic;
+    QString m_hostName;
+    QHostAddress m_mqttServer;
     EventCounter *m_eventCounter;
     int m_topics;
     uint32_t m_mpm;

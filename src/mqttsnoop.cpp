@@ -4,14 +4,19 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
 {
     m_tabWidget = new QTabWidget();
     
-    m_mqttClient = new QMQTT::Client("172.24.1.12", 1883, false, false);
-    QString hn = QString("%1-%2").arg(QHostInfo::localHostName()).arg(QRandomGenerator::global()->generate());
-    m_mqttClient->setClientId(hn);
-    qDebug() << __PRETTY_FUNCTION__ << "Connecting to host with name" << hn;
-    m_mqttClient->connectToHost();
+    m_mqttClient = new QMQTT::Client();
+    m_hostName = QString("%1-%2").arg(QHostInfo::localHostName()).arg(QRandomGenerator::global()->generate());
+    m_mqttClient->setClientId(m_hostName);
     m_mqttClient->setAutoReconnect(true);
     m_mqttClient->setAutoReconnectInterval(10000);
-    
+
+    m_addressDialog = new AddressDialog();
+    m_addressDialog->setWindowModality(Qt::WindowModal);
+
+    const QRect availableGeometry = frameGeometry();
+    qDebug() << __PRETTY_FUNCTION__ << ": geometry:" << availableGeometry;
+//    m_addressDialog->resize(availableGeometry.width() / 3, availableGeometry.height() * 2 / 3);
+    m_addressDialog->move((availableGeometry.width() - m_addressDialog->width()) / 2, (availableGeometry.height() - m_addressDialog->height()) / 2);
     m_eventCounter = new EventCounter();
     connect(m_eventCounter, SIGNAL(minuteEvents(uint64_t)), this, SLOT(displayMPM(uint64_t)));
     
@@ -23,6 +28,8 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     connect(m_mqttClient, SIGNAL(unsubscribed(const QString&)), this, SLOT(unsubscribed(const QString&)));
     connect(m_mqttClient, SIGNAL(pingresp()), this, SLOT(pingresp()));
     connect(m_mqttClient, SIGNAL(received(const QMQTT::Message&)), this, SLOT(received(const QMQTT::Message&)));
+
+    connect(m_addressDialog, &AddressDialog::newServerValue, this, qOverload<QString>(&MQTTSnoopWindow::connectAddressInput));
     
     setCentralWidget(m_tabWidget);
     
@@ -35,6 +42,24 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     setPalette(pal);
 
     m_currentTopic = "#";
+
+    QSettings settings("mqttsnoop", "mqttsnoop");
+    if (settings.contains("mqttserver")) {
+        if (settings.contains("mqttport")) {
+            m_mqttClient->setPort(settings.value("mqttport").toInt());
+        }
+        else {
+            m_mqttClient->setPort(1883);
+            settings.setValue("mqttport", 1883);
+        }
+        m_mqttServer.setAddress(settings.value("mqttserver").toString());
+        if (!m_mqttServer.isNull()) {
+            connectAddressInput();
+        }
+    }
+    else {
+        menuConnect();
+    }
 }
 
 MQTTSnoopWindow::~MQTTSnoopWindow()
@@ -62,6 +87,15 @@ void MQTTSnoopWindow::buildMenuBar()
 
 void MQTTSnoopWindow::menuConnect()
 {
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("Set Server Address"),
+                                         tr("MQTT Server"), QLineEdit::Normal,
+                                         m_currentTopic, &ok);
+
+    m_mqttServer.setAddress(text);
+    if (!m_mqttServer.isNull()) {
+        connectAddressInput();
+    }
 }
 
 void MQTTSnoopWindow::menuSubscribe()
@@ -71,11 +105,12 @@ void MQTTSnoopWindow::menuSubscribe()
                                          tr("Topic String"), QLineEdit::Normal,
                                          m_currentTopic, &ok);
 
+
+    qDebug() << __PRETTY_FUNCTION__ << ": Subscribing to" << text << ", ok is" << ok;
     if (ok && text.size()) {
+        qDebug() << __PRETTY_FUNCTION__ << ": Subscribing to" << text;
         m_mqttClient->unsubscribe(m_currentTopic);
         m_mqttClient->subscribe(text);
-        m_currentTopic = text;
-        m_sbCurrentTopic->setText(QString("Topic: ") + m_currentTopic);
     }
 }
 
@@ -92,7 +127,7 @@ void MQTTSnoopWindow::buildStatusBar()
     m_sbConnected = new QLabel("Disconnected");
     m_sbConnected->setAutoFillBackground(true);
 
-    m_sbTopicsReceived = new QLabel("Topics: 0");
+    m_sbTopicsReceived = new QLabel("Topics Received: 0");
     m_sbTopicsReceived->setAlignment(Qt::AlignCenter);
     m_sbTopicsReceived->setAutoFillBackground(true);
 
@@ -170,9 +205,8 @@ void MQTTSnoopWindow::updateTab(QString topic, QJsonDocument doc, TabWidget* tab
 
 void MQTTSnoopWindow::connected()
 {
-//    m_mqttClient->subscribe("#");   // Subscribe to EVERYTHING on purpose
-    m_sbConnected->setText(QString("Connected: %1").arg(m_mqttClient->hostName()));
-    qDebug() << __PRETTY_FUNCTION__ << ": MQTT connected to" << m_mqttClient->hostName();
+    m_sbConnected->setText(QString("Connected: %1").arg(m_mqttClient->host().toString()));
+    qDebug() << __PRETTY_FUNCTION__ << ": MQTT connected to" << m_mqttClient->host();
 }
 
 void MQTTSnoopWindow::disconnected()
@@ -184,6 +218,11 @@ void MQTTSnoopWindow::disconnected()
 void MQTTSnoopWindow::error(const QMQTT::ClientError error)
 {
     qDebug() << __PRETTY_FUNCTION__ << ": MQTT error:" << error;
+    m_sbConnected->setText(QString("MQTT Error: %1").arg(error));
+    if (error == QMQTT::ClientError::SocketHostNotFoundError || error == QMQTT::ClientError::SocketTimeoutError) {
+        m_mqttClient->disconnectFromHost();
+        m_addressDialog->show();
+    }
 }
 
 void MQTTSnoopWindow::pingresp()
@@ -215,7 +254,7 @@ void MQTTSnoopWindow::received(const QMQTT::Message& message)
             QScrollArea *scroller = static_cast<QScrollArea*>(topLayout->itemAt(0)->widget());
             TabWidget *widget = static_cast<TabWidget*>(scroller->widget());
             updateTab(message.topic(), json, widget);
-            m_sbTopicsReceived->setText(QString("Topics: %1").arg(m_topics));
+            m_sbTopicsReceived->setText(QString("Topics Received: %1").arg(m_topics));
             return;
         }
     }
@@ -227,16 +266,29 @@ void MQTTSnoopWindow::received(const QMQTT::Message& message)
 
 void MQTTSnoopWindow::subscribed(const QString& topic, const quint8 qos)
 {
-    Q_UNUSED(topic)
     Q_UNUSED(qos)
+    m_sbCurrentTopic->setText(QString("Topic: %1, QOS(%2)").arg(topic).arg(qos));
+    m_currentTopic = topic;
 }
 
 void MQTTSnoopWindow::unsubscribed(const QString& topic)
 {
+    Q_UNUSED(topic)
+    m_sbCurrentTopic->clear();
 }
 
+void MQTTSnoopWindow::connectAddressInput()
+{
+    m_mqttClient->setHost(m_mqttServer);
+    m_mqttClient->connectToHost();
+    qDebug() << __PRETTY_FUNCTION__ << "Connecting to" << m_mqttClient->host() << "with name" << m_hostName;
+    m_sbConnected->setText(QString("Connecting to %1").arg(m_mqttServer.toString()));
+}
 
-
-
-
+void MQTTSnoopWindow::connectAddressInput(QString address)
+{
+    m_mqttServer.setAddress(address);
+    if (!m_mqttServer.isNull())
+        connectAddressInput();
+}
 
