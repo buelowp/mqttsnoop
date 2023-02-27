@@ -36,6 +36,7 @@ public slots:
     void connectAddressInput(QString address);
 
 protected:
+    void moveEvent(QMoveEvent *e) override;
     void showEvent(QShowEvent *e) override;
     void resizeEvent(QResizeEvent *e) override;
     void closeEvent(QCloseEvent *e) override;

@@ -21,6 +21,8 @@
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
 
+#include "qjsonmodel.h"
+
 class JsonWidget : public QWidget
 {
     Q_OBJECT
@@ -31,22 +33,19 @@ public:
     
     void addJson(QJsonDocument &json);
     QString topic() { return m_topicString; }
-    QSize minimumSizeHint() const override;
-    QSize sizeHint() const override;
 
 protected slots:
     void showEvent(QShowEvent *e) override;
     void paintEvent(QPaintEvent *e) override;
     
 private:
-    void populateNewWidget(int localX, QJsonObject obj);
-    void updateWidget(int localX, int i, QJsonObject obj);
+    void populateNewWidget(QJsonDocument obj);
+    void updateWidget(QJsonDocument obj);
     
     QLabel *m_topic;
     QString m_topicString;
-    uint32_t m_y;
-    uint32_t m_width;
-    uint32_t m_origin;
+    QJsonModel *m_data;
+    QVBoxLayout *m_layout;
     bool m_populated;
 };
 
