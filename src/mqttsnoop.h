@@ -63,6 +63,7 @@ private:
     QString m_currentTopic;
     QString m_hostName;
     QHostAddress m_mqttServer;
+    QAction *m_subscribeAct;
     EventCounter *m_eventCounter;
     int m_topics;
     uint32_t m_mpm;

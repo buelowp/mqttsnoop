@@ -101,10 +101,12 @@ void MQTTSnoopWindow::buildMenuBar()
     netToolBar->addAction(connectAct);
 
     const QIcon subscribeIcon = QIcon::fromTheme("document-open", QIcon(":/images/open.png"));
-    QAction *subsribeAct = new QAction(subscribeIcon, tr("&Subscribe"), this);
-    subsribeAct->setStatusTip(tr("Subscribe"));
-    connect(subsribeAct, &QAction::triggered, this, &MQTTSnoopWindow::menuSubscribe);
-    netToolBar->addAction(subsribeAct);
+    m_subscribeAct = new QAction(subscribeIcon, tr("&Subscribe"), this);
+    m_subscribeAct->setStatusTip(tr("Subscribe"));
+    connect(m_subscribeAct, &QAction::triggered, this, &MQTTSnoopWindow::menuSubscribe);
+    netToolBar->addAction(m_subscribeAct);
+
+    m_subscribeAct->setDisabled(true);
 }
 
 
@@ -230,12 +232,14 @@ void MQTTSnoopWindow::connected()
 {
     m_sbConnected->setText(QString("Connected: %1").arg(m_mqttClient->host().toString()));
     qDebug() << __PRETTY_FUNCTION__ << ": MQTT connected to" << m_mqttClient->host();
+    m_subscribeAct->setDisabled(false);
 }
 
 void MQTTSnoopWindow::disconnected()
 {
     qDebug() << __PRETTY_FUNCTION__ << ": Disconnected from MQTT server";
     m_sbConnected->setText(QString("Disconnected"));
+    m_subscribeAct->setDisabled(true);
 }
 
 void MQTTSnoopWindow::error(const QMQTT::ClientError error)
@@ -264,12 +268,12 @@ void MQTTSnoopWindow::received(const QMQTT::Message& message)
     QJsonDocument json = QJsonDocument::fromJson(message.payload());
     int i = 0;
     
-    m_eventCounter->bump();
     
     if (json.isNull() || json.isEmpty()) {
         return;
     }
-    
+    m_eventCounter->bump();
+
     for (i = 0; i < m_tabWidget->count(); i++) {
         if (m_tabWidget->tabText(i) == parentTopic) {
             QWidget *top = static_cast<QWidget*>(m_tabWidget->widget(i));
