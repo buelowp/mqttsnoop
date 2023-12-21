@@ -25,7 +25,7 @@ JsonWidget::JsonWidget(QString topic, QWidget *parent) : QWidget(parent), m_topi
     m_data = new QJsonModel();
     
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, Qt::darkGray);
+    pal.setColor(QPalette::Window, QColor(210, 210, 210));
     setAutoFillBackground(true);
     setPalette(pal);
 

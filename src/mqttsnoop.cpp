@@ -1,5 +1,27 @@
 #include "mqttsnoop.h"
 
+QString tabStyle(" \
+    QTabBar::tab { \
+        background-color: qlineargradient(x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgb(253,250,250), stop:0.2 rgb(253,250,250), stop:1 rgb(255,249,234)); \
+ \
+        border-top-left-radius: 7px; \
+        border-top-right-radius: 7px; \
+\
+        min-width: 8ex; \
+        padding: 5px; \
+    } \
+\
+    QTabBar::tab:selected { \
+        background-color: rgb(200,200,255); \
+    } \
+\
+    QTabBar::tab:!selected { \
+        margin-top: 5px; \
+        background: qlineargradient(x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgb(253,250,250), stop:0.2 rgb(253,250,250), stop:1 rgb(250,244,229)); \
+        color: rgb(93, 109, 109) \
+    }"
+);
+
 MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topics(0), m_mpm(0)
 {
     m_tabWidget = new QTabWidget();
@@ -31,16 +53,20 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     
     buildStatusBar();
     buildMenuBar();
-    
+
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, Qt::darkGray);
+    pal.setColor(QPalette::Window, Qt::white);
     setAutoFillBackground(true);
     setPalette(pal);
 
     m_currentTopic = "#";
 
-    QSettings settings("mqttsnoop", "mqttsnoop");
+    m_tabWidget->setStyleSheet(tabStyle);
+
+    QSettings settings("home", "mqttsnoop");
+    qDebug() << __PRETTY_FUNCTION__ << ":" << settings.fileName() << "," << settings.status();
     if (settings.contains("mqttserver")) {
+        qDebug() << __PRETTY_FUNCTION__ << settings.value("mqttserver").toString() << ":" << settings.value("mqttport").toInt();
         if (settings.contains("mqttport")) {
             m_mqttClient->setPort(settings.value("mqttport").toInt());
         }
@@ -117,22 +143,18 @@ void MQTTSnoopWindow::buildStatusBar()
     
     m_sbConnected = new QLabel("Disconnected");
     m_sbConnected->setAutoFillBackground(true);
-    m_sbConnected->setStyleSheet("QLabel { background-color: white; color : black; }");
 
     m_sbTopicsReceived = new QLabel("Topics Received: 0");
     m_sbTopicsReceived->setAlignment(Qt::AlignCenter);
     m_sbTopicsReceived->setAutoFillBackground(true);
-    m_sbTopicsReceived->setStyleSheet("QLabel { background-color: white; color : black; }");
 
     m_sbMessagesPerMinute = new QLabel("Messages Per Minute: 0");
     m_sbMessagesPerMinute->setAlignment(Qt::AlignRight);
     m_sbMessagesPerMinute->setAutoFillBackground(true);
-    m_sbMessagesPerMinute->setStyleSheet("QLabel { background-color: white; color : black; }");
     
     m_sbCurrentTopic = new QLabel(QString("Topic: ") + m_currentTopic);
     m_sbCurrentTopic->setAlignment(Qt::AlignCenter);
     m_sbCurrentTopic->setAutoFillBackground(true);
-    m_sbCurrentTopic->setStyleSheet("QLabel { background-color: white; color : black; }");
 
     m_statusbarLayout->addWidget(m_sbConnected);
     m_statusbarLayout->addStretch();
@@ -153,13 +175,7 @@ void MQTTSnoopWindow::closeEvent(QCloseEvent* e)
 
 void MQTTSnoopWindow::moveEvent(QMoveEvent* e)
 {
-    int deltaX = e->pos().x() - e->oldPos().x();
-    int deltaY = e->pos().y() - e->oldPos().y();
     m_addressDialog->move(m_addressDialog->geometry().x() + (e->pos().x() - e->oldPos().x()), m_addressDialog->geometry().y() + (e->pos().y() - e->oldPos().y()));
-    qDebug() << __PRETTY_FUNCTION__ << ": deltaX  :" << deltaX;
-    qDebug() << __PRETTY_FUNCTION__ << ": deltaY  :" << deltaY;
-    qDebug() << __PRETTY_FUNCTION__ << ": geometry:" << m_addressDialog->geometry();
-    qDebug() << __PRETTY_FUNCTION__ << ": frame   :" << frameGeometry();
 }
 
 void MQTTSnoopWindow::showEvent(QShowEvent* e)
@@ -171,17 +187,16 @@ void MQTTSnoopWindow::showEvent(QShowEvent* e)
     m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 4) - 15);
     m_sbCurrentTopic->setMinimumWidth((statusBar()->width() / 4) - 15);
     m_addressDialog->move((frameGeometry().width() / 2), (frameGeometry().height() / 2));
-    qDebug() << __PRETTY_FUNCTION__ << ": geometry:" << m_addressDialog->geometry();
-    qDebug() << __PRETTY_FUNCTION__ << ": frame   :" << frameGeometry();
 }
 
 void MQTTSnoopWindow::resizeEvent(QResizeEvent* e)
 {
     Q_UNUSED(e)
     
-    m_sbConnected->setMinimumWidth((statusBar()->width() / 3) - 15);
-    m_sbTopicsReceived->setMinimumWidth((statusBar()->width() / 3) - 15);
-    m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 3) - 15);    
+    m_sbConnected->setMinimumWidth((statusBar()->width() / 4) - 15);
+    m_sbTopicsReceived->setMinimumWidth((statusBar()->width() / 4) - 15);
+    m_sbCurrentTopic->setMinimumWidth((statusBar()->width() / 4) - 15);
+    m_sbMessagesPerMinute->setMinimumWidth((statusBar()->width() / 4) - 15);
 }
 
 void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
