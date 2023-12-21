@@ -31,30 +31,18 @@ JsonWidget::JsonWidget(QString topic, QWidget *parent) : QWidget(parent), m_topi
 
     m_layout->addWidget(m_topic);
     setLayout(m_layout);
+
+    m_minHeight = 0;
 }
 
 JsonWidget::~JsonWidget() = default;
 
-void JsonWidget::paintEvent(QPaintEvent* e)
-{
-    /*
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::TextAntialiasing);
-    painter.drawRoundedRect(1, 1, width() - 2, height() - 2, 2.0, 2.0);
-    QWidget::paintEvent(e);
-    */
-}
-
-void JsonWidget::showEvent(QShowEvent *e)
-{
-    QWidget::showEvent(e);
-}
-
 void JsonWidget::populateNewWidget(QJsonDocument obj)
 {
     QTreeView * view = new QTreeView();
-    view->setModel(m_data);
     m_data->load(obj);
+    view->setModel(m_data);
+    setMinimumHeight(view->height());
     m_layout->addWidget(view);
 }
 
@@ -72,7 +60,6 @@ void JsonWidget::addJson(QJsonDocument& doc)
         return;
     }
     
-//     qDebug() << __PRETTY_FUNCTION__ << "Topic label height" << m_topic->height();
     QJsonObject json = doc.object();
     if (m_populated) {
         updateWidget(doc);

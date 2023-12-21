@@ -24,7 +24,7 @@ TabWidget::TabWidget(QWidget *parent) : QWidget(parent)
     pal.setColor(QPalette::Window, QColor(190, 190, 190));
     setAutoFillBackground(true);
     setPalette(pal);
-    m_layout->setSpacing(5);
+//    m_layout->setSpacing(5);
 }
 
 TabWidget::~TabWidget() = default;

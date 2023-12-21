@@ -64,9 +64,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     m_tabWidget->setStyleSheet(tabStyle);
 
     QSettings settings("home", "mqttsnoop");
-    qDebug() << __PRETTY_FUNCTION__ << ":" << settings.fileName() << "," << settings.status();
     if (settings.contains("mqttserver")) {
-        qDebug() << __PRETTY_FUNCTION__ << settings.value("mqttserver").toString() << ":" << settings.value("mqttport").toInt();
         if (settings.contains("mqttport")) {
             m_mqttClient->setPort(settings.value("mqttport").toInt());
         }
@@ -81,6 +79,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
         }
     }
     else {
+        qDebug() << __PRETTY_FUNCTION__ << ": No content found at" << settings.fileName() << ", using defaults.";
         menuConnect();
     }
 }
@@ -123,9 +122,7 @@ void MQTTSnoopWindow::menuSubscribe()
                                          m_currentTopic, &ok);
 
 
-    qDebug() << __PRETTY_FUNCTION__ << ": Subscribing to" << text << ", ok is" << ok;
     if (ok && text.size()) {
-        qDebug() << __PRETTY_FUNCTION__ << ": Subscribing to" << text;
         m_mqttClient->unsubscribe(m_currentTopic);
         m_mqttClient->subscribe(text);
     }
@@ -207,7 +204,7 @@ void MQTTSnoopWindow::newTab(QString topic, QJsonDocument json)
     QString parentTopic = topic.left(topic.indexOf("/"));
     QWidget *parentWidget = new QWidget(m_tabWidget);
     QHBoxLayout *parentLayout = new QHBoxLayout();
-    parentLayout->setSpacing(5);
+//    parentLayout->setSpacing(5);
     parentWidget->setLayout(parentLayout);
     QScrollArea *parentScroll = new QScrollArea();
     parentLayout->addWidget(parentScroll);

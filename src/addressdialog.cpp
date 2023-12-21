@@ -43,7 +43,6 @@ void AddressDialog::textChanged(const QString &text)
 {
     QHostAddress validated(text);
 
-    qDebug() << __PRETTY_FUNCTION__ << ": m_isValid =" << m_isValid;
     m_isValid = !validated.isNull();
 
     if (m_isValid)

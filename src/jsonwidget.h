@@ -33,10 +33,6 @@ public:
     
     void addJson(QJsonDocument &json);
     QString topic() { return m_topicString; }
-
-protected slots:
-    void showEvent(QShowEvent *e) override;
-    void paintEvent(QPaintEvent *e) override;
     
 private:
     void populateNewWidget(QJsonDocument obj);
@@ -47,5 +43,6 @@ private:
     QJsonModel *m_data;
     QVBoxLayout *m_layout;
     bool m_populated;
+    int m_minHeight;
 };
 
