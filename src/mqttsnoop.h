@@ -5,7 +5,7 @@
 #include <QtWidgets/QtWidgets>
 #include <QtGui/QtGui>
 #include <QtNetwork/QtNetwork>
-#include <QtQmqtt/qmqtt.h>
+#include <QtMqtt/QtMqtt>
 
 #include "jsonwidget.h"
 #include "tabwidget.h"
@@ -23,12 +23,10 @@ public:
 public slots:
     void connected();
     void disconnected();
-    void error(const QMQTT::ClientError error);
+    void error(QMqttClient::ClientError error);
     void subscribed(const QString& topic, const quint8 qos);
     void unsubscribed(const QString& topic);
-    void published(const quint16 msgid, const quint8 qos);
-    void pingresp();
-    void received(const QMQTT::Message& message);
+    void received(const QByteArray &message, const QMqttTopicName &topic);
     void displayMPM(uint64_t);
     void menuSubscribe();
     void menuConnect();
@@ -42,13 +40,15 @@ protected:
     void closeEvent(QCloseEvent *e) override;
     
 private:
-    void updateTab(QString topic, QJsonDocument doc, TabWidget *tab);
-    void newTab(QString topic, QJsonDocument doc);
+    void updateTab(QString topic, QString localTopic, QJsonDocument doc, TabWidget *tab);
+    void newTab(QString topic, QString localTopic, QJsonDocument doc);
     void buildStatusBar();
     void buildMenuBar();
     void updateMpmCount();
+    bool compareTabText(QString, QString);
     
-    QMQTT::Client *m_mqttClient;
+    QMqttClient *m_mqttClient;
+    QMqttSubscription *m_subscription;
     AddressDialog *m_addressDialog;
     QTabWidget *m_tabWidget;
     QWidget *m_statusbarWidget;

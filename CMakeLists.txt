@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.16)
 project(mqttsnoop)
 
 file (GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -15,15 +15,13 @@ set (THREADS_PREFER_PTHREAD_FLAG ON)
 set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 
 # Find the QtWidgets library
-find_package(Qt5Widgets CONFIG REQUIRED)
-find_package(Qt5Network CONFIG REQUIRED)
-find_package(Qt5Qmqtt CONFIG REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Mqtt Network Widgets)
 
 # Tell CMake to create the helloworld executable
 add_executable(mqttsnoop ${SOURCES} ${RC})
 
 # Use the Widgets module from Qt 5.
-target_link_libraries(mqttsnoop Qt5::Widgets Qt5::Network Qt5::Qmqtt)
+target_link_libraries(mqttsnoop Qt6::Widgets Qt6::Network Qt6::Mqtt)
 
 # Install the executable
 install(TARGETS mqttsnoop DESTINATION bin)

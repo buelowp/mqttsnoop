@@ -24,7 +24,6 @@ TabWidget::TabWidget(QWidget *parent) : QWidget(parent)
     pal.setColor(QPalette::Window, QColor(190, 190, 190));
     setAutoFillBackground(true);
     setPalette(pal);
-//    m_layout->setSpacing(5);
 }
 
 TabWidget::~TabWidget() = default;
@@ -43,19 +42,16 @@ bool TabWidget::addJson(QString topic, QJsonDocument doc)
         for (int j = 0; j < 2; j++) {
             QLayoutItem *item = m_layout->itemAtPosition(i, j);
             if (item == nullptr) {
-//                 qDebug() << __PRETTY_FUNCTION__ << "No widget at row" << i << ", column" << j << ", creating a new topic [" << topic << "]";
                 return addNewWidget(i, j, topic, doc);
             }
             
             JsonWidget *jw = static_cast<JsonWidget*>(item->widget());
             if (jw->topic() == topic) {
-//                 qDebug() << __PRETTY_FUNCTION__ << "Updating existing [" << topic << "] at row" << i << ", column" << j;
                 jw->addJson(doc);
                 return false;
             }
         }
     }
     
-//     qDebug() << __PRETTY_FUNCTION__ << "Did not find [" << topic << "] in the widget set";
     return false;
 }
