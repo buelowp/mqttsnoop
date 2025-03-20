@@ -26,22 +26,25 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
 {
     m_tabWidget = new QTabWidget();
     
+    m_isSSL = false;
     m_mqttClient = new QMqttClient();
     m_hostName = QString("%1-%2").arg(QHostInfo::localHostName()).arg(QRandomGenerator::global()->generate());
     m_mqttClient->setClientId(m_hostName);
-    m_mqttClient->setPort(1883);
 
     m_addressDialog = new AddressDialog();
     m_addressDialog->setWindowModality(Qt::WindowModal);
+    connect(m_addressDialog, &AddressDialog::newCACertificate, this, &MQTTSnoopWindow::newCACert);
+    connect(m_addressDialog, &AddressDialog::newClientCertificate, this, &MQTTSnoopWindow::newClientCert);
+    connect(m_addressDialog, &AddressDialog::newClientKey, this, &MQTTSnoopWindow::newClientKey);
 
     m_eventCounter = new EventCounter();
     connect(m_eventCounter, SIGNAL(minuteEvents(uint64_t)), this, SLOT(displayMPM(uint64_t)));
     
     connect(m_mqttClient, SIGNAL(connected()), this, SLOT(connected()));
     connect(m_mqttClient, SIGNAL(disconnected()), this, SLOT(disconnected()));
-    connect(m_mqttClient, SIGNAL(error(const QMQTT::ClientError)), this, SLOT(error(const QMQTT::ClientError)));
+    connect(m_mqttClient, &QMqttClient::errorChanged, this, &MQTTSnoopWindow::error);
     connect(m_mqttClient, &QMqttClient::messageReceived, this, &MQTTSnoopWindow::received);
-    connect(m_addressDialog, &AddressDialog::newServerValue, this, qOverload<QString>(&MQTTSnoopWindow::connectAddressInput));
+    connect(m_addressDialog, &AddressDialog::newServerValue, this, &MQTTSnoopWindow::connectAddressInput);
     
     setCentralWidget(m_tabWidget);
     
@@ -56,25 +59,24 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     m_currentTopic = "#";
 
     m_tabWidget->setStyleSheet(tabStyle);
-
     QSettings settings("home", "mqttsnoop");
     if (settings.contains("mqttserver")) {
-        if (settings.contains("mqttport")) {
-            m_mqttClient->setPort(settings.value("mqttport").toInt());
-        }
-        else {
-            m_mqttClient->setPort(1883);
-            settings.setValue("mqttport", 1883);
-        }
-        m_mqttServer.setAddress(settings.value("mqttserver").toString());
-        m_addressDialog->setText(settings.value("mqttserver").toString());
-        if (!m_mqttServer.isNull()) {
-            connectAddressInput();
-        }
+        m_addressDialog->setServerText(settings.value("mqttserver").toString());
     }
-    else {
-        qDebug() << __PRETTY_FUNCTION__ << ": No content found at" << settings.fileName() << ", using defaults.";
-        menuConnect();
+    if (settings.contains("mqttport")) {
+        m_addressDialog->setServerPort(settings.value("mqttport").toString());
+    }
+    if (settings.contains("clientkey")) {
+        m_addressDialog->setClientKeyFile(settings.value("clientkey").toString());
+        newClientKey(settings.value("clientkey").toString());
+    }
+    if (settings.contains("cacert")) {
+        m_addressDialog->setCACertFile(settings.value("cacert").toString());
+        newCACert(settings.value("cacert").toString());
+    }
+    if (settings.contains("clientcert")) {
+        m_addressDialog->setClientKeyFile(settings.value("clientcert").toString());
+        newClientCert(settings.value("clientcert").toString());
     }
 }
 
@@ -83,6 +85,52 @@ MQTTSnoopWindow::~MQTTSnoopWindow()
     m_mqttClient->unsubscribe(m_currentTopic);
     m_mqttClient->disconnectFromHost();
 }
+
+void MQTTSnoopWindow::newCACert(QString cert)
+{
+    QSettings settings("home", "mqttsnoop");
+    QFile certFile(cert);
+
+    if (certFile.open(QIODevice::ReadOnly)) {
+        QSslCertificate c(&certFile, QSsl::Pem);
+        m_sslConfig.addCaCertificate(c);
+        settings.setValue("cacert", cert);
+    }
+    else {
+        qDebug() << "Error opening CA cert" << cert << ":" << certFile.errorString();
+    }
+}
+
+void MQTTSnoopWindow::newClientCert(QString cert)
+{
+    QSettings settings("home", "mqttsnoop");
+    QFile certFile(cert);
+
+    if (certFile.open(QIODevice::ReadOnly)) {
+        QSslCertificate c(&certFile, QSsl::Pem);
+        m_sslConfig.setLocalCertificate(c);
+        settings.setValue("clientcert", cert);
+    }
+    else {
+        qDebug() << "Error opening client cert" << cert << ":" << certFile.errorString();
+    }
+}
+
+void MQTTSnoopWindow::newClientKey(QString key)
+{
+    QSettings settings("home", "mqttsnoop");
+    QFile keyFile(key);
+
+    if (keyFile.open(QIODevice::ReadOnly)) {
+        QSslKey privateKey(&keyFile, QSsl::Rsa);
+        m_sslConfig.setPrivateKey(privateKey);
+        settings.setValue("clientkey", key);
+    }
+    else {
+        qDebug() << "Error opening keyfile" << key << ":" << keyFile.errorString();
+    }
+}
+
 
 void MQTTSnoopWindow::buildMenuBar()
 {
@@ -218,7 +266,12 @@ void MQTTSnoopWindow::updateTab(QString topic, QString localTopic, QJsonDocument
 
 void MQTTSnoopWindow::connected()
 {
-    m_sbConnected->setText(QString("Connected: %1").arg(m_mqttClient->hostname()));
+    if (m_isSSL) {
+        m_sbConnected->setText(QString("Connected: mqtts://%1:%2").arg(m_mqttClient->hostname()).arg(m_mqttClient->port()));
+    }
+    else {
+        m_sbConnected->setText(QString("Connected: mqtt://%1:%2").arg(m_mqttClient->hostname()).arg(m_mqttClient->port()));
+    }
     qDebug() << __PRETTY_FUNCTION__ << ": MQTT connected to" << m_mqttClient->hostname();
     m_subscribeAct->setDisabled(false);
 }
@@ -286,18 +339,23 @@ void MQTTSnoopWindow::unsubscribed(const QString& topic)
     m_sbCurrentTopic->clear();
 }
 
-void MQTTSnoopWindow::connectAddressInput()
+void MQTTSnoopWindow::connectAddressInput(QString address, int port)
 {
-    m_mqttClient->setHostname(m_mqttServer.toString());
-    m_mqttClient->connectToHost();
-    qDebug() << __PRETTY_FUNCTION__ << "Connecting to" << m_mqttClient->hostname() << "with name" << m_hostName;
+    QSettings settings("home", "mqttsnoop");
+
+    m_mqttServer.setAddress(address);
+    m_mqttClient->setPort(port);
+    m_mqttClient->setHostname(address);
+    if (m_sslConfig.isNull()) {
+        m_isSSL = false;
+        qDebug() << "Connecting to mqtt://" << m_mqttClient->hostname() << ":" << m_mqttClient->port();
+        m_mqttClient->connectToHost();
+    }
+    else {
+        qDebug() << "Connecting to mqtts://" << m_mqttClient->hostname() << ":" << m_mqttClient->port();
+        m_sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+        m_mqttClient->connectToHostEncrypted(m_sslConfig);
+        m_isSSL = true;
+    }
     m_sbConnected->setText(QString("Connecting to %1").arg(m_mqttServer.toString()));
 }
-
-void MQTTSnoopWindow::connectAddressInput(QString address)
-{
-    m_mqttServer.setAddress(address);
-    if (!m_mqttServer.isNull())
-        connectAddressInput();
-}
-

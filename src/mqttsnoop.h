@@ -30,8 +30,10 @@ public slots:
     void displayMPM(uint64_t);
     void menuSubscribe();
     void menuConnect();
-    void connectAddressInput();
-    void connectAddressInput(QString address);
+    void connectAddressInput(QString address, int port);
+    void newClientCert(QString cert);
+    void newCACert(QString cert);
+    void newClientKey(QString key);
 
 protected:
     void moveEvent(QMoveEvent *e) override;
@@ -67,6 +69,8 @@ private:
     EventCounter *m_eventCounter;
     int m_topics;
     uint32_t m_mpm;
+    QSslConfiguration m_sslConfig;
+    bool m_isSSL;
 };
 
 #endif // MQTTSNOOP_H
