@@ -8,7 +8,7 @@
 #include <QtWidgets/QtWidgets>
 #include <QtNetwork/QtNetwork>
 
-#include "QLabelEvent.h"
+#include "qlabelevent.h"
 
 class AddressDialog : public QWidget
 {

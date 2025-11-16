@@ -341,8 +341,6 @@ void MQTTSnoopWindow::unsubscribed(const QString& topic)
 
 void MQTTSnoopWindow::connectAddressInput(QString address, int port)
 {
-    QSettings settings("home", "mqttsnoop");
-
     m_mqttServer.setAddress(address);
     m_mqttClient->setPort(port);
     m_mqttClient->setHostname(address);

@@ -18,12 +18,15 @@ AddressDialog::AddressDialog(QWidget *parent) : QWidget(parent)
     qDebug() << "Client Cert:" << settings.value("clientcert").toString();
     qDebug() << "Client Key:" << settings.value("clientkey").toString();
     qDebug() << "CA Cert:" << settings.value("cacert").toString();
-    m_clientCertificateLabel = new QLabelEvent(settings.value("clientcert").toString());
-    connect(m_clientCertificateLabel, &QLabelEvent::labelClicked, this, &AddressDialog::clientCert);
-    m_clientKeyLabel = new QLabelEvent(settings.value("clientkey").toString());
-    connect(m_clientKeyLabel, &QLabelEvent::labelClicked, this, &AddressDialog::clientKey);
-    m_caCertificateLabel = new QLabelEvent(settings.value("cacert").toString());
-    connect(m_caCertificateLabel, &QLabelEvent::labelClicked, this, &AddressDialog::caCert);
+    m_clientCertificateLabel = new QLabelEvent();
+    m_clientCertificateLabel->setText(settings.value("clientcert").toString());
+    connect(m_clientCertificateLabel, &QLabelEvent::clicked, this, &AddressDialog::clientCert);
+    m_clientKeyLabel = new QLabelEvent();
+    m_clientKeyLabel->setText(settings.value("clientkey").toString());
+    connect(m_clientKeyLabel, &QLabelEvent::clicked, this, &AddressDialog::clientKey);
+    m_caCertificateLabel = new QLabelEvent();
+    m_caCertificateLabel->setText(settings.value("cacert").toString());
+    connect(m_caCertificateLabel, &QLabelEvent::clicked, this, &AddressDialog::caCert);
 
     m_isValid = false;
     m_cancel = new QPushButton("Cancel");
