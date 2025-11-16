@@ -1,7 +1,27 @@
 CMake Qt5 GUI Template
 ----------------------
 
-You need Qt5 and CMake 2.8.11 or higher
+You need Qt6 and CMake 3 or newer
+
+-- Install Qt6 qmqtt --
+
+This is for Ubuntu variants which have installed qt6 using
+
+```
+sudo apt install qt6-base-dev qt6-base-private-dev
+sudo dpkg -l qt6-base-dev
+```
+
+find the version of qt6 installed in your system
+
+```
+git clone git://code.qt.io/qt/qtmqtt.git -b <version from above>
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
 
 -- Build instructions --
 
