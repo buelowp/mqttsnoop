@@ -1,9 +1,8 @@
-CMake Qt5 GUI Template
-----------------------
+# CMake Qt5 GUI Template
 
 You need Qt6 and CMake 3 or newer
 
--- Install Qt6 qmqtt --
+## Install Qt6 qmqtt
 
 This is for Ubuntu variants which have installed qt6 using
 
@@ -23,7 +22,7 @@ make
 sudo make install
 ```
 
--- Build instructions --
+## Build instructions
 
 cd /your/project/build
 cmake ../
@@ -32,7 +31,7 @@ make
 ./mqttsnoop
 
 
--- Tutorials and resources --
+## Tutorials and resources
 
 Qt online docs
 https://doc.qt.io/
