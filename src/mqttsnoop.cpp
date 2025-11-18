@@ -45,26 +45,31 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
     connect(m_mqttClient, &QMqttClient::errorChanged, this, &MQTTSnoopWindow::error);
     connect(m_mqttClient, &QMqttClient::messageReceived, this, &MQTTSnoopWindow::received);
     connect(m_addressDialog, &AddressDialog::newServerValue, this, &MQTTSnoopWindow::connectAddressInput);
+    connect(m_addressDialog, &AddressDialog::autoConnect, this, &MQTTSnoopWindow::autoConnectChange);
     
     setCentralWidget(m_tabWidget);
     
     buildStatusBar();
     buildMenuBar();
-
+/*
     QPalette pal = palette();
     pal.setColor(QPalette::Window, Qt::white);
     setAutoFillBackground(true);
     setPalette(pal);
-
+*/
     m_currentTopic = "#";
 
     m_tabWidget->setStyleSheet(tabStyle);
     QSettings settings("home", "mqttsnoop");
-    if (settings.contains("mqttserver")) {
+    if (settings.contains("mqttserver") && settings.contains("mqttport")) {
         m_addressDialog->setServerText(settings.value("mqttserver").toString());
+        m_addressDialog->setServerPort(settings.value("mqttport").toString());
+        if (settings.contains("autoconnect")) {
+            connectAddressInput(settings.value("mqttserver").toString(), settings.value("mqttport").toInt());
+        }
     }
     if (settings.contains("mqttport")) {
-        m_addressDialog->setServerPort(settings.value("mqttport").toString());
+
     }
     if (settings.contains("clientkey")) {
         m_addressDialog->setClientKeyFile(settings.value("clientkey").toString());
@@ -207,6 +212,13 @@ void MQTTSnoopWindow::buildStatusBar()
     
     m_statusbarWidget->setLayout(m_statusbarLayout);
     statusBar()->addWidget(m_statusbarWidget);
+}
+
+void MQTTSnoopWindow::autoConnectChange(bool state)
+{
+    qDebug() << __PRETTY_FUNCTION__ << ":" << state;
+    QSettings settings("home", "mqttsnoop");
+    settings.setValue("autoconnect", QVariant(state));
 }
 
 void MQTTSnoopWindow::closeEvent(QCloseEvent* e)

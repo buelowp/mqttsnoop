@@ -23,12 +23,12 @@ JsonWidget::JsonWidget(QString topic, QWidget *parent) : QWidget(parent), m_topi
     m_layout = new QVBoxLayout();
     m_topic = new QLabel(topic);
     m_data = new QJsonModel();
-    
+/*
     QPalette pal = palette();
     pal.setColor(QPalette::Window, QColor(210, 210, 210));
     setAutoFillBackground(true);
     setPalette(pal);
-
+*/
     m_layout->addWidget(m_topic);
     setLayout(m_layout);
 

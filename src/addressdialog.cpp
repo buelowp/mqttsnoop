@@ -10,10 +10,12 @@ AddressDialog::AddressDialog(QWidget *parent) : QWidget(parent)
     m_layout = new QGridLayout();
     m_serverLabel = new QLineEdit();
     m_serverPortLabel = new QLineEdit();
+    m_autoConnect = new QCheckBox();
     QLabel *ccl = new QLabel("Client Certificate");
     QLabel *ckl = new QLabel("Client Key");
     QLabel *cal = new QLabel("CA Certificate");
     QLabel *hnp = new QLabel("Hostname:Port");
+    QLabel *mac = new QLabel("Auto Reconnect on Start");
 
     qDebug() << "Client Cert:" << settings.value("clientcert").toString();
     qDebug() << "Client Key:" << settings.value("clientkey").toString();
@@ -35,18 +37,21 @@ AddressDialog::AddressDialog(QWidget *parent) : QWidget(parent)
     connect(m_serverLabel, &QLineEdit::textChanged, this, &AddressDialog::textChanged);
     connect(m_cancel, &QPushButton::clicked, this, &AddressDialog::cancel);
     connect(m_ok, &QPushButton::clicked, this, &AddressDialog::accept);
+    connect(m_autoConnect, &QCheckBox::checkStateChanged, this, &AddressDialog::autoConnectChange);
 
     m_layout->addWidget(hnp, 0, 0, 1, 1);
     m_layout->addWidget(m_serverLabel, 0, 1, 1, 2);
     m_layout->addWidget(m_serverPortLabel, 0, 3, 1, 1);
-    m_layout->addWidget(ccl, 1, 0, 1, 1);
-    m_layout->addWidget(m_clientCertificateLabel, 1, 1, 1, 3);
-    m_layout->addWidget(ckl, 2, 0, 1, 1);
-    m_layout->addWidget(m_clientKeyLabel, 2, 1, 1, 3);
-    m_layout->addWidget(cal, 3, 0, 1, 1);
-    m_layout->addWidget(m_caCertificateLabel, 3, 1, 1, 3);
-    m_layout->addWidget(m_ok, 4, 0, 1, 2);
-    m_layout->addWidget(m_cancel, 4, 2, 1, 2);
+    m_layout->addWidget(mac, 1, 0, 1, 3);
+    m_layout->addWidget(m_autoConnect, 1, 2, 1, 1);
+    m_layout->addWidget(ccl, 2, 0, 1, 1);
+    m_layout->addWidget(m_clientCertificateLabel, 2, 1, 1, 3);
+    m_layout->addWidget(ckl, 3, 0, 1, 1);
+    m_layout->addWidget(m_clientKeyLabel, 3, 1, 1, 3);
+    m_layout->addWidget(cal, 4, 0, 1, 1);
+    m_layout->addWidget(m_caCertificateLabel, 4, 1, 1, 3);
+    m_layout->addWidget(m_ok, 5, 0, 1, 2);
+    m_layout->addWidget(m_cancel, 5, 2, 1, 2);
     setLayout(m_layout);
 
     m_homeDir = QString::fromUtf8(qgetenv("HOME"));
@@ -54,6 +59,14 @@ AddressDialog::AddressDialog(QWidget *parent) : QWidget(parent)
 
 AddressDialog::~AddressDialog()
 {
+}
+
+void AddressDialog::autoConnectChange(Qt::CheckState state)
+{
+    if (state == Qt::Unchecked)
+        emit autoConnect(false);
+    else
+        emit autoConnect(true);
 }
 
 void AddressDialog::caCert()

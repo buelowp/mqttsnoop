@@ -34,6 +34,7 @@ public slots:
     void newClientCert(QString cert);
     void newCACert(QString cert);
     void newClientKey(QString key);
+    void autoConnectChange(bool state);
 
 protected:
     void moveEvent(QMoveEvent *e) override;

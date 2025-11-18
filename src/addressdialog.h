@@ -37,12 +37,14 @@ public slots:
     void caCert();
     void clientCert();
     void clientKey();
+    void autoConnectChange(Qt::CheckState state);
 
 signals:
     void newServerValue(QString value, int port);
     void newClientCertificate(QString cert);
     void newCACertificate(QString cert);
     void newClientKey(QString key);
+    void autoConnect(bool state);
 
 private:
     QGridLayout *m_layout;
