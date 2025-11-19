@@ -59,7 +59,7 @@ MQTTSnoopWindow::MQTTSnoopWindow(QWidget *parent) : QMainWindow(parent), m_topic
 */
     m_currentTopic = "#";
 
-    m_tabWidget->setStyleSheet(tabStyle);
+//    m_tabWidget->setStyleSheet(tabStyle);
     QSettings settings("home", "mqttsnoop");
     if (settings.contains("mqttserver") && settings.contains("mqttport")) {
         m_addressDialog->setServerText(settings.value("mqttserver").toString());
